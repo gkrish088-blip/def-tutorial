@@ -68,8 +68,7 @@ from snippets.models import Snippet , LANGUAGE_CHOICES , STYLE_CHOICES
 # the upper method is the django method where we only use Serializer class but rest framework gives a better option to use ModelSerializer class that inherits from serializer class
 # ModelSerializer class automatically creates the serializers by looking at the model and also generated the create() and update() methods . 
 
-class SnippetSerializers (serializers.ModelSerializer):
+class SnippetSerializer (serializers.ModelSerializer):
     class Meta:
         model = Snippet
         fields = ["id" , "title" , "code" , "linenos" , "language" , "style"]
-        
