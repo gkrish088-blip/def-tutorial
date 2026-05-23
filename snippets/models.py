@@ -3,6 +3,9 @@ from django.db import models
 # all this is for style and highlighting 
 from pygments.lexers import get_all_lexers
 from pygments.styles import get_all_styles
+from pygments.lexers import get_lexer_by_name
+from pygments.formatters.html import HtmlFormatter
+from pygments import highlight
 
 
 LEXERS = [item for item in get_all_lexers() if item[1]]
@@ -24,6 +27,19 @@ class Snippet(models.Model):
         choices=LANGUAGE_CHOICES, default='python' ,  max_length=100
     ) # yeh hamne vo pygments me se uthai this , uspr loop se conditions lga ke 
     style = models.CharField(choices=STYLE_CHOICES , max_length=100 , default="friendly")
+    owner = models.ForeignKey(  # forgien key makes it many to one relationship meaning one user can have  many snippets 
+        "auth.User" , related_name="snippets" , on_delete=models.CASCADE # the first arg auth.user , auth is the djangos authentication app and user is the builtin  User model , so it means create a forgien key pointing to builtin user model
+    )                                                                       # related name tells the reverse relationship name and on delete cascade means then user is deleted , delete all his snippts 
+    highlighted = models.TextField()
+    def save(self , *args , **kwargs):
+        """use the pygments library to create a higlighted html
+        representation of the code snippet"""
+        lexer = get_lexer_by_name(self.language)
+        linenos = "table" if self.linenos else False
+        options = {"title": self.title} if self.title else {}
+        formatter = HtmlFormatter(style= self.style ,  linenos=linenos, full=True, **options)
+        self.highlighted = highlight(self.code, lexer, formatter)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["created"]   
