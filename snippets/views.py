@@ -134,50 +134,131 @@ To take advantage of the fact that our responses are no longer hardwired to a si
 We can also write our API views using class-based views, rather than function based views. As we'll see this is a powerful pattern that allows us to reuse common functionality, and helps us keep our code DRY.
 """
 
+# from snippets.models import Snippet
+# from snippets.serializers import SnippetSerializer
+# from rest_framework.views import APIView
+# from rest_framework import status
+# from rest_framework.response import Response
+# from django.http import Http404
+
+# class SnippetList(APIView):
+#     """
+#     list all the snippets , or create a new snippet
+#     """
+#     def get(self , request , fromat = None): # the name of the function is special because apiview sees the GET req and converts it into lower case and then looks for get method in the class . so this method is only fot get req
+#         snippets = Snippet.objects.all()
+#         serializer = SnippetSerializer(snippets , many = True)
+#         return Response(serializer.data)
+    
+#     def post(self, request , format = None):  # method for post req
+#         serializer = SnippetSerializer(request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data , status=status.HTTP_201_CREATED)
+#         return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+# class Snippet_details(APIView):
+#     """
+#     retreive , update or delete a snippet instance"""
+
+#     def getobject(self , pk): # this is a helper function made by us naming of this function is not in the syntax . 
+#         try:
+#             return Snippet.objects.get(pk=pk)
+#         except Snippet.DoesNotExist:
+#             raise Http404 
+#     def get(self , request , pk , format = None):
+#         snippet = self.getobject(pk)
+#         serializer = SnippetSerializer(snippet)
+#         return Response(serializer.data)
+#     def put(self , request , pk , format = None):
+#         snippet = self.getobject(pk)
+#         serializer = SnippetSerializer(snippet , data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def delete(self , request , pk , format = None):
+#         snippet = self.getobject(pk)
+#         snippet.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+
+"""
+The create/retrieve/update/delete operations that we've been using so far are going to be pretty similar for any model-backed API views we create. Those bits of common behavior are implemented in REST framework's mixin classes.
+"""
+
 from snippets.models import Snippet
 from snippets.serializers import SnippetSerializer
-from rest_framework.views import APIView
-from rest_framework import status
-from rest_framework.response import Response
-from django.http import Http404
+from rest_framework import mixins
+from rest_framework import generics
 
-class SnippetList(APIView):
-    """
-    list all the snippets , or create a new snippet
-    """
-    def get(self , request , fromat = None): # the name of the function is special because apiview sees the GET req and converts it into lower case and then looks for get method in the class . so this method is only fot get req
-        snippets = Snippet.objects.all()
-        serializer = SnippetSerializer(snippets , many = True)
-        return Response(serializer.data)
-    
-    def post(self, request , format = None):  # method for post req
-        serializer = SnippetSerializer(request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data , status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-    
-class Snippet_details(APIView):
-    """
-    retreive , update or delete a snippet instance"""
 
-    def getobject(self , pk): # this is a helper function made by us naming of this function is not in the syntax . 
-        try:
-            return Snippet.objects.get(pk=pk)
-        except Snippet.DoesNotExist:
-            raise Http404 
-    def get(self , request , pk , format = None):
-        snippet = self.getobject(pk)
-        serializer = SnippetSerializer(snippet)
-        return Response(serializer.data)
-    def put(self , request , pk , format = None):
-        snippet = self.getobject(pk)
-        serializer = SnippetSerializer(snippet , data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def delete(self , request , pk , format = None):
-        snippet = self.getobject(pk)
-        snippet.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+"""
+*args
+
+collects extra positional arguments into a tuple.
+
+Example:
+
+def test(a, *args):
+    print(a)
+    print(args)
+
+test(1, 2, 3, 4)
+
+Output:
+
+1
+(2, 3, 4)
+
+So:
+
+a = 1
+args = (2,3,4)
+
+
+**kwargs
+
+collects extra named arguments into a dictionary.
+
+Example:
+
+def test(a, **kwargs):
+    print(a)
+    print(kwargs)
+
+test(1, name="Krish", age=20)
+
+Output:
+
+1
+{'name':'Krish', 'age':20}
+
+So:
+
+a = 1
+kwargs = {'name':'Krish','age':20}
+"""
+class SnippetList (
+    mixins.ListModelMixin, mixins.CreateModelMixin , generics.GenericAPIView
+):
+    queryset = Snippet.objects.all()
+    serializer_class = SnippetSerializer
+
+    def get(self , request , *args , **kwargs):
+        return self.list(request , *args , **kwargs)
+    def post(self , request , *args , **kwargs):
+        return self.create(request , *args , **kwargs)
+
+class SnippetDetails(
+    mixins.RetrieveModelMixin, mixins.UpdateModelMixin , mixins.DestroyModelMixin , generics.GenericAPIView
+):
+    queryset = Snippet.objects.all()
+    serializer_class = SnippetSerializer
+
+    def get(self , request , *args , **kwargs):
+        return self.retrieve(request , *args , **kwargs)
+    def put(self , request ,  *args , **kwargs):
+        return self.update(request , *args , **kwargs)
+    def delete(self , request , *args , **kwargs):
+        return self.destroy(request , *args , **kwargs)
