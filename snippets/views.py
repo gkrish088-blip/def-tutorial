@@ -87,44 +87,97 @@ The wrappers also provide behavior such as returning 405 Method Not Allowed resp
 Adding optional format suffixes to our URLs
 To take advantage of the fact that our responses are no longer hardwired to a single content type let's add support for format suffixes to our API endpoints. Using format suffixes gives us URLs that explicitly refer to a given format, and means our API will be able to handle URLs such as http://example.com/api/items/4.json.
 """
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+# from rest_framework import status
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from snippets.models import Snippet
+# from snippets.serializers import SnippetSerializer
+
+# @api_view(["GET" , "POST"])
+# def snippet_list(request , format = None):
+#     """list all the code snippets ,  or create new snippet """
+#     if request.method == "GET":
+#         snippets = Snippet.objects.all()
+#         serializer = SnippetSerializer(snippets , many= True)
+#         return Response(serializer.data)
+#     elif request.method == "POST":
+#         serializer = SnippetSerializer(data = request.data) # earlier we used data = JsonParser , but now request.data automatically parses it into python data structure
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data ,status=status.HTTP_201_CREATED)
+        
+# @api_view(["GET" , "DELETE" , "PUT"])
+# def snippet_details(request,pk, format = None):
+#     """
+#     Retrieve , update or delete a code snippet.
+#     """
+#     try:
+#         snippet = Snippet.objects.get(pk=pk)
+#     except Snippet.DoesNotExist:
+#         return Response(status=status.HTTP_404_NOT_FOUND)
+    
+#     if request.method == "GET":
+#         serializer = SnippetSerializer(snippet)
+#         return Response(serializer.data)
+#     elif request.method == "PUT":
+#         serializer = SnippetSerializer(snippet , data = request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors , status=status.HTTP_400_BAD_REQUEST)
+#     elif request.method == "DELETE":
+#         snippet.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+"""
+We can also write our API views using class-based views, rather than function based views. As we'll see this is a powerful pattern that allows us to reuse common functionality, and helps us keep our code DRY.
+"""
+
 from snippets.models import Snippet
 from snippets.serializers import SnippetSerializer
+from rest_framework.views import APIView
+from rest_framework import status
+from rest_framework.response import Response
+from django.http import Http404
 
-@api_view(["GET" , "POST"])
-def snippet_list(request , format = None):
-    """list all the code snippets ,  or create new snippet """
-    if request.method == "GET":
+class SnippetList(APIView):
+    """
+    list all the snippets , or create a new snippet
+    """
+    def get(self , request , fromat = None): # the name of the function is special because apiview sees the GET req and converts it into lower case and then looks for get method in the class . so this method is only fot get req
         snippets = Snippet.objects.all()
-        serializer = SnippetSerializer(snippets , many= True)
+        serializer = SnippetSerializer(snippets , many = True)
         return Response(serializer.data)
-    elif request.method == "POST":
-        serializer = SnippetSerializer(data = request.data) # earlier we used data = JsonParser , but now request.data automatically parses it into python data structure
+    
+    def post(self, request , format = None):  # method for post req
+        serializer = SnippetSerializer(request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data ,status=status.HTTP_201_CREATED)
-        
-@api_view(["GET" , "DELETE" , "PUT"])
-def snippet_details(request,pk, format = None):
-    """
-    Retrieve , update or delete a code snippet.
-    """
-    try:
-        snippet = Snippet.objects.get(pk=pk)
-    except Snippet.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(serializer.data , status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
     
-    if request.method == "GET":
+class Snippet_details(APIView):
+    """
+    retreive , update or delete a snippet instance"""
+
+    def getobject(self , pk): # this is a helper function made by us naming of this function is not in the syntax . 
+        try:
+            return Snippet.objects.get(pk=pk)
+        except Snippet.DoesNotExist:
+            raise Http404 
+    def get(self , request , pk , format = None):
+        snippet = self.getobject(pk)
         serializer = SnippetSerializer(snippet)
         return Response(serializer.data)
-    elif request.method == "PUT":
-        serializer = SnippetSerializer(snippet , data = request.data)
+    def put(self , request , pk , format = None):
+        snippet = self.getobject(pk)
+        serializer = SnippetSerializer(snippet , data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors , status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == "DELETE":
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self , request , pk , format = None):
+        snippet = self.getobject(pk)
         snippet.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
