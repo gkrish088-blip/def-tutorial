@@ -76,18 +76,71 @@ This field is doing something quite interesting. The source argument controls wh
 
 The field we've added is the untyped ReadOnlyField class, in contrast to the other typed fields, such as CharField, BooleanField etc... The untyped ReadOnlyField is always read-only, and will be used for serialized representations, but will not be used for updating model instances when they are deserialized. We could have also used CharField(read_only=True) here.
 """
-class SnippetSerializer (serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source="owner.username")
-    class Meta:
-        model = Snippet
-        fields = ["id" , "title" , "code" , "linenos" , "language" , "style" , "owner"]
+# class SnippetSerializer (serializers.ModelSerializer):
+#     owner = serializers.ReadOnlyField(source="owner.username")
+#     class Meta:
+#         model = Snippet
+#         fields = ["id" , "title" , "code" , "linenos" , "language" , "style" , "owner"]
 
 
-# because anippets is not included in the Users model by default so we have to explicitly add it in the feilds 
-class UserSerializer (serializers.ModelSerializer):
-    snippets = serializers.PrimaryKeyRelatedField(
-        many = True , queryset = Snippet.objects.all()
+# # because anippets is not included in the Users model by default so we have to explicitly add it in the feilds 
+# class UserSerializer (serializers.ModelSerializer):
+#     snippets = serializers.PrimaryKeyRelatedField(
+#         many = True , queryset = Snippet.objects.all()
+#     )
+#     class Meta:
+#         model = User
+#         fields = ["id" , "username" , "snippets"]
+
+
+
+"""
+Using hyperlinked apia , so intead so seeing { user : 1 }  we will see { user : api/vi/users/1 } , this maked an api discoverable .
+The HyperlinkedModelSerializer has the following differences from ModelSerializer:
+
+It does not include the id field by default.
+It includes a url field, using HyperlinkedIdentityField.
+Relationships use HyperlinkedRelatedField, instead of PrimaryKeyRelatedField.
+
+"""
+
+class SnippetSerializer(serializers.HyperlinkedModelSerializer):
+    owner = serializers.ReadOnlyField(source = "owner.username")
+    highlight = serializers.HyperlinkedIdentityField(
+        view_name= "snippet-highlight" , format="html"
     )
     class Meta:
-        model = User
-        fields = ["id" , "username" , "snippets"]
+        model=Snippet
+        fields = [
+            "url",
+            "id",
+            "highlight",
+            "owner",
+            "title",
+            "code",
+            "linenos",
+            "language",
+            "style",
+        ]
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    snippets = serializers.HyperlinkedRelatedField(
+        many=True,view_name="snippet-detail" ,read_only=True
+    )
+    class Meta():
+        model=User
+        fields=["url","id","username","snippets"]
+
+
+
+"""
+When you are manually instantiating these serializers inside your views (e.g., in SnippetDetail or SnippetList), you must pass context={'request': request} so the serializer knows how to build absolute URLs. For example, instead of:
+
+
+serializer = SnippetSerializer(snippet)
+You must write:
+
+
+serializer = SnippetSerializer(snippet, context={"request": request})
+If your view is a subclass of GenericAPIView, you may use the get_serializer_context() as a convenience method.
+"""
