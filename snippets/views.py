@@ -279,45 +279,120 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework import renderers
 
-class SnippetList(generics.ListCreateAPIView):
+# class SnippetList(generics.ListCreateAPIView):
+#     queryset = Snippet.objects.all()
+#     serializer_class = SnippetSerializer
+
+
+#     """
+#     REST framework includes a number of permission classes that we can use to restrict who can access a given view. In this case the one we're looking for is IsAuthenticatedOrReadOnly, which will ensure that authenticated requests get read-write access, and unauthenticated requests get read-only access.
+#     """
+#     permission_classes = [permissions.IsAuthenticatedOrReadOnly , IsOwnerOrReadOnly]
+#     def perform_create(self, serializer):
+#         serializer.save(owner = self.request.user)
+# class SnippetDetails(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = Snippet.objects.all()
+#     serializer_class = SnippetSerializer
+#     permission_classes = [permissions.IsAuthenticatedOrReadOnly ]
+# class UserList(generics.ListCreateAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+# class UserDetails(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+
+# """
+
+# what reverse actually does is that it finds the urls with the name given from the paths in url.py  and links them here"""
+# @api_view(['GET'])
+# def api_root(request , format= None):
+#     return Response(
+#         {
+#             "users" : reverse("user-list" , request=request , format=format),
+#             "snippets": reverse("snippet-list" , request=request , format=format),  
+
+#         }
+#     )
+
+# class SnippetHighlight(generics.GenericAPIView):
+#     queryset = Snippet.objects.all()
+#     renderer_classes = [renderers.StaticHTMLRenderer]
+
+#     def get(self, request, *args, **kwargs):
+#         snippet = self.get_object()
+#         return Response(snippet.highlighted)
+    
+
+"""
+ViewSet says:
+
+"Forget HTTP methods (get, post) and URL details. Just tell me the operations your resource supports."
+
+Instead of:
+
+def get(self):
+def post(self):
+def put(self):
+
+you write:
+
+class SnippetViewSet(viewsets.ModelViewSet):
+
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
 
+ModelViewSet automatically provides:
 
-    """
-    REST framework includes a number of permission classes that we can use to restrict who can access a given view. In this case the one we're looking for is IsAuthenticatedOrReadOnly, which will ensure that authenticated requests get read-write access, and unauthenticated requests get read-only access.
-    """
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly , IsOwnerOrReadOnly]
-    def perform_create(self, serializer):
-        serializer.save(owner = self.request.user)
-class SnippetDetails(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly ]
-class UserList(generics.ListCreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-class UserDetails(generics.RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+list()
+create()
+retrieve()
+update()
+partial_update()
+destroy()
 
 """
 
-what reverse actually does is that it finds the urls with the name given from the paths in url.py  and links them here"""
-@api_view(['GET'])
-def api_root(request , format= None):
-    return Response(
-        {
-            "users" : reverse("user-list" , request=request , format=format),
-            "snippets": reverse("snippet-list" , request=request , format=format),  
 
-        }
-    )
+from rest_framework import viewsets
 
-class SnippetHighlight(generics.GenericAPIView):
-    queryset = Snippet.objects.all()
-    renderer_classes = [renderers.StaticHTMLRenderer]
 
-    def get(self, request, *args, **kwargs):
+"""
+Here we've used the ReadOnlyModelViewSet class to automatically provide the default 'read-only' operations. We're still setting the queryset and serializer_class attributes exactly as we did when we were using regular views, but we no longer need to provide the same information to two separate classes.
+"""
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    this viewset automatically provides the 'list' and 'retreive' actions"""
+
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+from rest_framework.decorators import action
+
+
+
+"""
+This time we've used the ModelViewSet class in order to get the complete set of default read and write operations.
+
+Notice that we've also used the @action decorator to create a custom action, named highlight. This decorator can be used to add any custom endpoints that don't fit into the standard create/update/delete style.
+
+Custom actions which use the @action decorator will respond to GET requests by default. We can use the methods argument if we wanted an action that responded to POST requests.
+
+The URLs for custom actions by default depend on the method name itself. If you want to change the way url should be constructed, you can include url_path as a decorator keyword argument.
+
+"""
+class SnippetViewSet(viewsets.ModelViewSet):
+    """this viewset automatically provides the 'list , 'create', 'retreive' , 'update'  and destroy' actions.
+    Additionally we provide an extra highlight action
+    """
+    queryset=Snippet.objects.all()
+    serializer_class = SnippetSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly , IsOwnerOrReadOnly]
+
+    @action(detail=True , renderer_classes=[
+        renderers.StaticHTMLRenderer
+    ])
+    def highlight(self , request , *args , **kwargs):
         snippet = self.get_object()
         return Response(snippet.highlighted)
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
